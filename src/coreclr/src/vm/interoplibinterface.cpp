@@ -271,7 +271,9 @@ void* QCALLTYPE ComWrappersNative::GetOrCreateComInterfaceForObject(
                     // If the managed object wrapper couldn't be set, then
                     // it should be possible to get the current one.
                     if (!interopInfo->TryGetManagedObjectComWrapper(&wrapper))
+                    {
                         UNREACHABLE();
+                    }
                 }
             }
         }
