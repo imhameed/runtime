@@ -12,6 +12,7 @@ namespace InteropLibImports
     enum class AllocScenario
     {
         ManagedObjectWrapper,
+        NativeObjectWrapper,
     };
 
     // Allocate the given amount of memory.

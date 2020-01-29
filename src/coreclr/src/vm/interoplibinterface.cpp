@@ -26,6 +26,7 @@
 namespace
 {
     const HandleType InstanceHandleType{ HNDTYPE_STRONG };
+    const HandleType ComWrappersImplHandleType{ HNDTYPE_STRONG };
 
     void* CallComputeVTables(
         _In_ OBJECTREF impl,
@@ -105,6 +106,50 @@ namespace
 
         return retObjRef;
     }
+
+    // This class is used to track the external object within the runtime.
+    struct ExternalObjectContext
+    {
+        void* Identity;
+    };
+
+    class ExtObjCache
+    {
+        class Traits : public DefaultSHashTraits<ExternalObjectContext *>
+        {
+        public:
+            using key_t = LPVOID;
+            static ExternalObjectContext *Null()    { LIMITED_METHOD_CONTRACT; return NULL; }
+            static bool IsNull(ExternalObjectContext *e)    { LIMITED_METHOD_CONTRACT; return (e == NULL); }
+            static const LPVOID GetKey(ExternalObjectContext *e)    { LIMITED_METHOD_CONTRACT; return (LPVOID)e->Identity; }
+            static count_t Hash(LPVOID key)   { LIMITED_METHOD_CONTRACT; return (count_t)key; }
+            static BOOL Equals(LPVOID lhs, LPVOID rhs) { LIMITED_METHOD_CONTRACT; return (lhs == rhs); }
+            static ExternalObjectContext *Deleted() { LIMITED_METHOD_CONTRACT; return (ExternalObjectContext *)-1; }
+            static bool IsDeleted(ExternalObjectContext *e) { LIMITED_METHOD_CONTRACT; return e == (ExternalObjectContext *)-1; }
+        };
+
+        SHash<Traits> _hashMap;
+        Crst _lock;
+
+    public:
+        class LockHolder : public CrstHolder
+        {
+        public:
+            LockHolder(ExtObjCache *cache)
+                : CrstHolder(&cache->_lock)
+            {
+                // This cache must be locked in Cooperative mode
+                // since releases of wrappers can occur during a GC.
+                CONTRACTL
+                {
+                    NOTHROW;
+                    GC_NOTRIGGER;
+                    MODE_COOPERATIVE;
+                }
+                CONTRACTL_END;
+            }
+        };
+    };
 }
 
 namespace InteropLibImports
@@ -322,6 +367,7 @@ void QCALLTYPE ComWrappersNative::GetOrCreateObjectForComInstance(
     BEGIN_QCALL;
 
     HRESULT hr;
+    ExternalObjectContext* extObjContext;
     IUnknown* externalComObject = reinterpret_cast<IUnknown*>(ext);
 
     // Determine the true identity of the object
@@ -329,26 +375,37 @@ void QCALLTYPE ComWrappersNative::GetOrCreateObjectForComInstance(
     hr = externalComObject->QueryInterface(IID_IUnknown, &identity);
     _ASSERTE(hr == S_OK);
 
-    // Switch to COOP mode in order to check if the the InteropLib already
-    // has an object for the external COM object or to create a new one.
+    // Switch to COOP mode in order to check if the external object is already
+    // known or a new one should be created.
     {
         GCX_COOP();
 
         struct
         {
             OBJECTREF implRef;
-            OBJECTREF newObjRef;
+            OBJECTREF objRef;
         } gc;
         ::ZeroMemory(&gc, sizeof(gc));
         GCPROTECT_BEGIN(gc);
 
-        gc.implRef = ObjectToOBJECTREF(*comWrappersImpl.m_ppObject);
-        _ASSERTE(gc.implRef != NULL);
+        //
+        // Query the external object cache
+        //
+        bool found = false;
+        if (!found)
+        {
+            hr = InteropLib::Com::CreateWrapperForExternal(identity, flags, sizeof(ExternalObjectContext), (void**)&extObjContext);
+            if (FAILED(hr))
+                COMPlusThrow(hr);
 
-        gc.newObjRef = CallGetObject(gc.implRef, identity, flags);
+            gc.implRef = ObjectToOBJECTREF(*comWrappersImpl.m_ppObject);
+            _ASSERTE(gc.implRef != NULL);
+
+            gc.objRef = CallGetObject(gc.implRef, identity, flags);
+        }
 
         // Set the return value
-        retValue.Set(gc.newObjRef);
+        retValue.Set(gc.objRef);
 
         GCPROTECT_END();
     }
@@ -361,7 +418,6 @@ void QCALLTYPE ComWrappersNative::RegisterForReferenceTrackerHost(
 {
     QCALL_CONTRACT;
 
-    const HandleType implHandleType{ HNDTYPE_STRONG };
     OBJECTHANDLE implHandle;
 
     BEGIN_QCALL;
@@ -377,11 +433,11 @@ void QCALLTYPE ComWrappersNative::RegisterForReferenceTrackerHost(
         implRef = ObjectToOBJECTREF(*comWrappersImpl.m_ppObject);
         _ASSERTE(implRef != NULL);
 
-        implHandle = GetAppDomain()->CreateTypedHandle(implRef, implHandleType);
+        implHandle = GetAppDomain()->CreateTypedHandle(implRef, ComWrappersImplHandleType);
 
         if (!InteropLib::Com::RegisterReferenceTrackerHostCallback(implHandle))
         {
-            DestroyHandleCommon(implHandle, implHandleType);
+            DestroyHandleCommon(implHandle, ComWrappersImplHandleType);
             COMPlusThrow(kInvalidOperationException, IDS_EE_RESET_REFERENCETRACKERHOST_CALLBACKS);
         }
 
