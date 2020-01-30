@@ -29,8 +29,8 @@ namespace
     const HandleType ComWrappersImplHandleType{ HNDTYPE_STRONG };
 
     void* CallComputeVTables(
-        _In_ OBJECTREF impl,
-        _In_ OBJECTREF instance,
+        _In_ OBJECTREF* implPROTECTED,
+        _In_ OBJECTREF* instancePROTECTED,
         _In_ INT32 flags,
         _Out_ DWORD* vtableCount)
     {
@@ -39,40 +39,27 @@ namespace
             THROWS;
             GC_TRIGGERS;
             MODE_COOPERATIVE;
-            PRECONDITION(impl != NULL);
-            PRECONDITION(instance != NULL);
+            PRECONDITION(implPROTECTED != NULL);
+            PRECONDITION(instancePROTECTED != NULL);
             PRECONDITION(vtableCount != NULL);
         }
         CONTRACTL_END;
 
         void* vtables = NULL;
 
-        struct
-        {
-            OBJECTREF implRef;
-            OBJECTREF instRef;
-        } gc;
-        ::ZeroMemory(&gc, sizeof(gc));
-        GCPROTECT_BEGIN(gc);
-
-        gc.implRef = impl;
-        gc.instRef = instance;
-
         PREPARE_NONVIRTUAL_CALLSITE(METHOD__COMWRAPPERS__COMPUTE_VTABLES);
         DECLARE_ARGHOLDER_ARRAY(args, 4);
-        args[ARGNUM_0]  = OBJECTREF_TO_ARGHOLDER(gc.implRef);
-        args[ARGNUM_1]  = OBJECTREF_TO_ARGHOLDER(gc.instRef);
+        args[ARGNUM_0]  = OBJECTREF_TO_ARGHOLDER(*implPROTECTED);
+        args[ARGNUM_1]  = OBJECTREF_TO_ARGHOLDER(*instancePROTECTED);
         args[ARGNUM_2]  = DWORD_TO_ARGHOLDER(flags);
         args[ARGNUM_3]  = PTR_TO_ARGHOLDER(vtableCount);
         CALL_MANAGED_METHOD(vtables, void*, args);
-
-        GCPROTECT_END();
 
         return vtables;
     }
 
     OBJECTREF CallGetObject(
-        _In_ OBJECTREF impl,
+        _In_ OBJECTREF* implPROTECTED,
         _In_ IUnknown* externalComObject,
         _In_ INT32 flags)
     {
@@ -81,30 +68,19 @@ namespace
             THROWS;
             GC_TRIGGERS;
             MODE_COOPERATIVE;
-            PRECONDITION(impl != NULL);
+            PRECONDITION(implPROTECTED != NULL);
             PRECONDITION(externalComObject != NULL);
         }
         CONTRACTL_END;
 
         OBJECTREF retObjRef;
 
-        struct
-        {
-            OBJECTREF implRef;
-        } gc;
-        ::ZeroMemory(&gc, sizeof(gc));
-        GCPROTECT_BEGIN(gc);
-
-        gc.implRef = impl;
-
         PREPARE_NONVIRTUAL_CALLSITE(METHOD__COMWRAPPERS__CREATE_OBJECT);
         DECLARE_ARGHOLDER_ARRAY(args, 3);
-        args[ARGNUM_0]  = OBJECTREF_TO_ARGHOLDER(gc.implRef);
+        args[ARGNUM_0]  = OBJECTREF_TO_ARGHOLDER(*implPROTECTED);
         args[ARGNUM_1]  = PTR_TO_ARGHOLDER(externalComObject);
         args[ARGNUM_2]  = DWORD_TO_ARGHOLDER(flags);
         CALL_MANAGED_METHOD(retObjRef, OBJECTREF, args);
-
-        GCPROTECT_END();
 
         return retObjRef;
     }
@@ -118,14 +94,19 @@ namespace
 
     class ExtObjCxtCache
     {
-        static ExtObjCxtCache* g_Instance;
+        static Volatile<ExtObjCxtCache*> g_Instance;
 
     public: // static
         static ExtObjCxtCache* GetInstance()
         {
-            // [TODO] Properly allocate the cache
-            if (g_Instance == nullptr)
-                g_Instance = new ExtObjCxtCache();
+            if (g_Instance.Load() == NULL)
+            {
+                ExtObjCxtCache* instMaybe = new ExtObjCxtCache();
+
+                // Attempt to set the global instance.
+                if (NULL != FastInterlockCompareExchangePointer(&g_Instance, instMaybe, NULL))
+                    delete instMaybe;
+            }
 
             return g_Instance;
         }
@@ -268,7 +249,7 @@ namespace
     };
 
     // Global instance
-    ExtObjCxtCache* ExtObjCxtCache::g_Instance;
+    Volatile<ExtObjCxtCache*> ExtObjCxtCache::g_Instance;
 
     // Wrapper for External Object Contexts
     struct ExtObjCxtHolder
@@ -480,7 +461,7 @@ void* QCALLTYPE ComWrappersNative::GetOrCreateComInterfaceForObject(
             // is taken. However, a key assumption here is that the returned memory will be
             // idempotent for the same object.
             DWORD vtableCount;
-            void* vtables = CallComputeVTables(gc.implRef, gc.instRef, flags, &vtableCount);
+            void* vtables = CallComputeVTables(&gc.implRef, &gc.instRef, flags, &vtableCount);
 
             // Re-query the associated InteropSyncBlockInfo for an existing managed object wrapper.
             if (!interopInfo->TryGetManagedObjectComWrapper(&wrapper))
@@ -605,7 +586,7 @@ void QCALLTYPE ComWrappersNative::GetOrCreateObjectForComInstance(
             _ASSERTE(gc.implRef != NULL);
 
             // Call the implementation to create an external object wrapper.
-            gc.objRef = CallGetObject(gc.implRef, identity, flags);
+            gc.objRef = CallGetObject(&gc.implRef, identity, flags);
             if (gc.objRef == NULL)
                 COMPlusThrow(kArgumentNullException);
 
