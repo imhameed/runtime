@@ -5,6 +5,12 @@
 #ifndef _INTEROP_INC_INTEROPLIB_H_
 #define _INTEROP_INC_INTEROPLIB_H_
 
+namespace InteropLibImports
+{
+    // Forward declaration of External Object Context iterator.
+    class ExtObjCxtIterator;
+}
+
 namespace InteropLib
 {
     using OBJECTHANDLE = void*;
