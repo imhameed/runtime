@@ -1981,7 +1981,15 @@ void CleanupSyncBlockComData(InteropSyncBlockInfo* pInteropInfo)
     void* mocw;
     if (pInteropInfo->TryGetManagedObjectComWrapper(&mocw))
     {
+        (void)TrySetManagedObjectComWrapper(NULL, mocw);
         ComWrappersNative::DestroyManagedObjectComWrapper(mocw);
+    }
+
+    void* eoc;
+    if (pInteropInfo->TryGetExternalComObjectContext(&eoc))
+    {
+        (void)TrySetExternalComObjectContext(NULL, eoc);
+        ComWrappersNative::DestroyExternalComObjectContext(eoc);
     }
 }
 

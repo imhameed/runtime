@@ -433,6 +433,7 @@ namespace
         }
         else
         {
+            // Create context for the possibly new external COM object.
             ExtObjCxtHolder newContext;
             hr = InteropLib::Com::CreateWrapperForExternal(identity, flags, sizeof(ExternalObjectContext), (void**)&newContext);
             if (FAILED(hr))
@@ -443,18 +444,24 @@ namespace
             if (gc.objRef == NULL)
                 COMPlusThrow(kArgumentNullException);
 
+            // Update the new context with the object details.
             newContext->Identity = (void*)identity;
             newContext->SyncBlockIndex = gc.objRef->GetSyncBlockIndex();
 
+            // Attempt to insert the new context into the cache.
             {
                 ExtObjCxtCache::LockHolder lock(cache);
                 extObjCxt = cache->FindOrAdd(identity, newContext);
             }
 
             // Detach from the holder if the returned context matches the new context
-            // since it means the new context was inserted.
+            // since it means the new context was inserted. Update the object's SyncBlock
+            // with a handle to the context for cleanup.
             if (extObjCxt == newContext)
+            {
+                (void)gc.objRef->GetSyncBlock()->GetInteropInfo()->TrySetExternalComObjectContext((void**)extObjCxt);
                 (void)newContext.Detach();
+            }
         }
 
         GCPROTECT_END();
@@ -730,6 +737,20 @@ void ComWrappersNative::DestroyManagedObjectComWrapper(_In_ void* wrapper)
     CONTRACTL_END;
 
     InteropLib::Com::DestroyWrapperForObject(wrapper);
+}
+
+void ComWrappersNative::DestroyExternalComObjectContext(_In_ void* context)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+        PRECONDITION(context != NULL);
+    }
+    CONTRACTL_END;
+
+    InteropLib::Com::DestroyWrapperForExternal(context);
 }
 
 #endif // FEATURE_COMINTEROP
