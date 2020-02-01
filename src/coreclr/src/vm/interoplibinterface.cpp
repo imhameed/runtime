@@ -496,7 +496,6 @@ namespace InteropLibImports
         CONTRACTL
         {
             NOTHROW;
-            GC_TRIGGERS;
             PRECONDITION(mem != NULL);
         }
         CONTRACTL_END;
@@ -509,7 +508,7 @@ namespace InteropLibImports
         CONTRACTL
         {
             NOTHROW;
-            MODE_PREEMPTIVE;
+            MODE_ANY;
             PRECONDITION(handle != NULL);
         }
         CONTRACTL_END;
@@ -738,7 +737,6 @@ void ComWrappersNative::DestroyManagedObjectComWrapper(_In_ void* wrapper)
     CONTRACTL
     {
         NOTHROW;
-        GC_NOTRIGGER;
         MODE_ANY;
         PRECONDITION(wrapper != NULL);
     }
@@ -752,7 +750,6 @@ void ComWrappersNative::DestroyExternalComObjectContext(_In_ void* context)
     CONTRACTL
     {
         NOTHROW;
-        GC_NOTRIGGER;
         MODE_ANY;
         PRECONDITION(context != NULL);
     }
