@@ -316,6 +316,7 @@ namespace
         // Check the object's SyncBlock for a managed object wrapper.
         SyncBlock* syncBlock = gc.instRef->GetSyncBlock();
         InteropSyncBlockInfo* interopInfo = syncBlock->GetInteropInfo();
+        _ASSERTE(syncBlock->IsPrecious());
 
         // Query the associated InteropSyncBlockInfo for an existing managed object wrapper.
         if (!interopInfo->TryGetManagedObjectComWrapper(&wrapper))
@@ -454,12 +455,17 @@ namespace
                 extObjCxt = cache->FindOrAdd(identity, newContext);
             }
 
-            // Detach from the holder if the returned context matches the new context
-            // since it means the new context was inserted. Update the object's SyncBlock
-            // with a handle to the context for cleanup.
+            // If the returned context matches the new context it means the
+            // new context was inserted.
             if (extObjCxt == newContext)
             {
-                (void)gc.objRef->GetSyncBlock()->GetInteropInfo()->TrySetExternalComObjectContext((void**)extObjCxt);
+                // Update the object's SyncBlock with a handle to the context for runtime cleanup.
+                SyncBlock* syncBlock = gc.objRef->GetSyncBlock();
+                InteropSyncBlockInfo* interopInfo = syncBlock->GetInteropInfo();
+                _ASSERTE(syncBlock->IsPrecious());
+                (void)interopInfo->TrySetExternalComObjectContext((void**)extObjCxt);
+
+                // Detach from the holder to avoid cleanup.
                 (void)newContext.Detach();
             }
         }
@@ -490,7 +496,7 @@ namespace InteropLibImports
         CONTRACTL
         {
             NOTHROW;
-            MODE_ANY;
+            GC_TRIGGERS;
             PRECONDITION(mem != NULL);
         }
         CONTRACTL_END;
@@ -534,6 +540,8 @@ namespace InteropLibImports
 
         *trackerTarget = NULL;
 
+        // Switch to Cooperative mode since object references
+        // are being manipulated.
         {
             GCX_COOP();
 
