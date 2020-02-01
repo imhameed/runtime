@@ -28,9 +28,28 @@ namespace
     // This class is used to track the external object within the runtime.
     struct ExternalObjectContext
     {
+        static DWORD InvalidSyncBlockIndex = 0;
+        static DWORD CollectedFlag = ~0;
+
         void* Identity;
         DWORD SyncBlockIndex;
+        DWORD IsCollected;
+
+        void MarkCollected()
+        {
+            _ASSERTE(GCHeapUtilities::IsGCInProgress());
+            SyncBlockIndex = InvalidSyncBlockIndex;
+            IsCollected = CollectedFlag;
+        }
+
+        bool IsActive() const
+        {
+            return (IsCollected != CollectedFlag)
+                && (SyncBlockIndex != InvalidSyncBlockIndex);
+        }
     };
+
+    static_assert((sizeof(ExternalObjectContext) % sizeof(void*)) == 0, "Keep context pointer size aligned");
 
     // Holder for a External Object Context
     struct ExtObjCxtHolder
@@ -189,7 +208,7 @@ namespace
             GCX_FORBID();
 
             ExternalObjectContext* cxt = Find(key);
-            if (Traits::IsNull(cxt))
+            if (cxt == NULL)
                 cxt = Add(newCxt);
 
             RETURN cxt;
@@ -425,7 +444,7 @@ namespace
 
         if (extObjCxt != NULL)
         {
-            if (extObjCxt->SyncBlockIndex == 0)
+            if (!extObjCxt->IsActive())
             {
                 // [TODO] We are in a bad spot?
             }
@@ -468,6 +487,8 @@ namespace
                 // Detach from the holder to avoid cleanup.
                 (void)newContext.Detach();
             }
+
+            _ASSERTE(extObjCxt->IsActive());
         }
 
         GCPROTECT_END();
@@ -755,7 +776,33 @@ void ComWrappersNative::DestroyExternalComObjectContext(_In_ void* context)
     }
     CONTRACTL_END;
 
+#ifdef _DEBUG
+    ExternalObjectContext* context = static_cast<ExternalObjectContext*>(contextRaw);
+    _ASSERTE(!context->IsActive());
+#endif
+
     InteropLib::Com::DestroyWrapperForExternal(context);
+}
+
+void ComWrappersNative::MarkExternalComObjectContextCollected(_In_ void* contextRaw)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+        PRECONDITION(context != NULL);
+        PRECONDITION(GCHeapUtilities::IsGCInProgress());
+    }
+    CONTRACTL_END;
+
+    ExternalObjectContext* context = static_cast<ExternalObjectContext*>(contextRaw);
+    _ASSERTE(context->IsActive());
+    context->MarkCollected();
+
+    ExtObjCxtCache* cache = ExtObjCxtCache::GetInstance();
+    _ASSERTE(cache != NULL);
+    cache->Remove(context);
 }
 
 #endif // FEATURE_COMINTEROP

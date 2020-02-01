@@ -34,6 +34,7 @@ public: // Native QCalls for the abstract ComWrappers managed type.
 public: // Lifetime management for COM Wrappers
     static void DestroyManagedObjectComWrapper(_In_ void* wrapper);
     static void DestroyExternalComObjectContext(_In_ void* context);
+    static void MarkExternalComObjectContextCollected(_In_ void* context);
 };
 
 #endif // FEATURE_COMINTEROP
