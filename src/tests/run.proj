@@ -522,6 +522,9 @@ namespace $([System.String]::Copy($(Category)).Replace(".","_").Replace("\","").
 
     <MakeDir Directories="$(BuildDir)" />
 
+    <Message Importance="High" Text="XXXih: BuildDir = $(BuildDir)" />
+    <Message Importance="High" Text="XXXih: BundleDir = $(BundleDir)" />
+
     <ItemGroup>
       <Hobert Include="$(MicrosoftNetCoreAppRuntimePackDir)/native/**/*.a" />
       <RuntimePackNativeLibs Include="$(MicrosoftNetCoreAppRuntimePackDir)/**/*.dll;$(MicrosoftNetCoreAppRuntimePackDir)/native/**/*.a;$(MicrosoftNetCoreAppRuntimePackDir)/native/**/*.dylib" />
@@ -536,6 +539,11 @@ namespace $([System.String]::Copy($(Category)).Replace(".","_").Replace("\","").
     <Copy
         SourceFiles="@(XUnitWrapperDll)"
         DestinationFolder="$(BuildDir)" />
+
+    <Message Importance="High" Text="XXXih: TestDlls = %(TestDlls.Identity)" />
+    <Message Importance="High" Text="XXXih: TestDlls Hoh = @(TestDlls)" />
+    <Message Importance="High" Text="" />
+        <!-- MainLibraryFileName="$(XUnitWrapperDll)" -->
 
     <AppleAppBuilderTask
         TargetOS="$(TargetOS)"

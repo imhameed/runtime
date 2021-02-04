@@ -126,6 +126,7 @@ public class AppleAppBuilderTask : Task
         if (!File.Exists(Path.Combine(AppDir, MainLibraryFileName)))
         {
             throw new ArgumentException($"MainLibraryFileName='{MainLibraryFileName}' was not found in AppDir='{AppDir}'");
+
         }
 
         if (ProjectName.Contains(" "))

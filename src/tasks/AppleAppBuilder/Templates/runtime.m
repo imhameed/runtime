@@ -258,8 +258,10 @@ mono_ios_runtime_init (void)
     mono_gc_init_finalizer_thread ();
     MONO_EXIT_GC_UNSAFE;
 #endif
+    printf ("XXXih: HURR DURRRRR\n");
 
-    const char* executable = "%EntryPointLibName%";
+    // const char* executable = "%EntryPointLibName%";
+    const char* executable = "DefaultImplementationsOfInterfaces.dll";
     MonoAssembly *assembly = load_assembly (executable, NULL);
     assert (assembly);
     os_log_info (OS_LOG_DEFAULT, "Executable: %{public}s", executable);

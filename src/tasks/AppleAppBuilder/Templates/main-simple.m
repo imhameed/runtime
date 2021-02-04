@@ -29,7 +29,7 @@ void (*clickHandlerPtr)(void);
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
+
     label = [[UILabel alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     label.textColor = [UIColor greenColor];
     label.font = [UIFont boldSystemFontOfSize: 30];
@@ -37,7 +37,7 @@ void (*clickHandlerPtr)(void);
     label.textAlignment = NSTextAlignmentCenter;
     label.text = @"Hello, wire me up!\n(dllimport ios_set_text)";
     [self.view addSubview:label];
-    
+
     UIButton *button = [UIButton buttonWithType:UIButtonTypeInfoDark];
     [button addTarget:self action:@selector(buttonClicked:) forControlEvents:UIControlEventTouchUpInside];
     [button setFrame:CGRectMake(50, 300, 200, 50)];
@@ -75,6 +75,8 @@ ios_set_text (const char* value)
 }
 
 int main(int argc, char * argv[]) {
+    printf("XXXih: HELLO\n");
+    asdasdsa
     @autoreleasepool {
         return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
     }

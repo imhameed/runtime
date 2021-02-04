@@ -150,6 +150,7 @@ internal class Xcode
                 .Replace("//%DllMap%", dllMap.ToString())
                 .Replace("%EntryPointLibName%", Path.GetFileName(entryPointLib)));
 
+
         Utils.RunProcess("cmake", cmakeArgs.ToString(), workingDir: binDir);
 
         return Path.Combine(binDir, projectName, projectName + ".xcodeproj");

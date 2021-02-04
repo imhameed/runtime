@@ -635,6 +635,7 @@ fi
 
 if [[ (-z "$__GenerateLayoutOnly") && (-z "$__BuildTestWrappersOnly") && ("$__MonoAot" -eq 0) ]]; then
     build_Tests
+    #echo 'XXXih: asdf'
 elif [[ ! -z "$__BuildTestWrappersOnly" ]]; then
     build_test_wrappers
 elif [[ "$__MonoAot" -eq 1 ]]; then
@@ -654,7 +655,8 @@ echo "${__MsgPrefix}Test binaries are available at ${__TestBinDir}"
 if [ "$__TargetOS" == "Android" ]; then
     build_MSBuild_projects "Create_Android_App" "$__RepoRootDir/src/tests/run.proj" "Create Android Apps" "/t:BuildAllAndroidApp" "/p:RunWithAndroid=true"
 elif [ "$__TargetOS" == "iOS" ]; then
-    build_MSBuild_projects "Create_iOS_App" "$__RepoRootDir/src/tests/run.proj" "Create iOS Apps" "/t:BuildAlliOSApp"
+    #build_MSBuild_projects "Create_iOS_App" "$__RepoRootDir/src/tests/run.proj" "Create iOS Apps" "/t:BuildAlliOSApp"
+    echo 'XXXih: targetos == ios'
 fi
 
 __testNativeBinDir="$__IntermediatesDir"/tests

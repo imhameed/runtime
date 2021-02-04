@@ -89,6 +89,7 @@ mono_ios_append_output (const char* value)
 }
 
 int main(int argc, char * argv[]) {
+    printf("XXXih: HELLO main-console\n");
     @autoreleasepool {
         return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
     }
