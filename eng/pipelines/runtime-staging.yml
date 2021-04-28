@@ -96,7 +96,7 @@ jobs:
           eq(variables['isFullMatrix'], true))
 
 #
-# MacCatalyst interp - requires AOT Compilation and Interp flags 
+# MacCatalyst interp - requires AOT Compilation and Interp flags
 # Build the whole product using Mono and run libraries tests
 #
 - template: /eng/pipelines/common/platform-matrix.yml
@@ -205,7 +205,7 @@ jobs:
           eq(dependencies.evaluate_paths.outputs['SetPathVars_mono.containsChange'], true),
           eq(dependencies.evaluate_paths.outputs['SetPathVars_installer.containsChange'], true),
           eq(variables['isFullMatrix'], true))
-      
+
       # don't run tests on PRs until we can get significantly more devices
       ${{ if eq(variables['isFullMatrix'], true) }}:
         # extra steps, run tests
@@ -308,6 +308,7 @@ jobs:
     runtimeFlavor: mono
     platforms:
     - Android_arm64
+    - iOSSimulator_x64
     variables:
       - ${{ if and(eq(variables['System.TeamProject'], 'public'), eq(variables['Build.Reason'], 'PullRequest')) }}:
         - name: _HelixSource

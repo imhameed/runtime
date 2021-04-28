@@ -710,7 +710,6 @@ jobs:
     platforms:
     - Linux_x64
     - Linux_arm64
-    - iOSSimulator_x64
     jobParameters:
       runtimeVariant: llvmaot
       condition: >-
@@ -751,7 +750,6 @@ jobs:
     - OSX_x64
     - windows_x64
     - FreeBSD_x64
-    - iOS_x64
     jobParameters:
       testScope: innerloop
       testBuildPlatforms:
@@ -990,7 +988,6 @@ jobs:
     platforms:
     - OSX_x64
     - Linux_arm64
-    - iOSSimulator_x64
     helixQueueGroup: pr
     helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
     jobParameters:
