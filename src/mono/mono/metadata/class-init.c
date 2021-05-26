@@ -27,6 +27,8 @@
 #include <mono/utils/mono-logger-internals.h>
 #include <mono/utils/mono-memory-model.h>
 #include <mono/utils/unlocked.h>
+
+#include <mono/mini/mini.h>
 #ifdef MONO_CLASS_DEF_PRIVATE
 /* Class initialization gets to see the fields of MonoClass */
 #define REALLY_INCLUDE_CLASS_DEF 1
@@ -859,7 +861,9 @@ mono_class_create_generic_inst (MonoGenericClass *gclass)
 
 	if (mono_is_corlib_image (gklass->image) &&
 		(!strcmp (gklass->name, "Vector`1") || !strcmp (gklass->name, "Vector64`1") || !strcmp (gklass->name, "Vector128`1") || !strcmp (gklass->name, "Vector256`1"))) {
-		klass->simd_type = 1;
+		MonoType *etype = gclass->context.class_inst->type_argv [0];
+		if (!mini_is_gsharedvt_type (etype))
+			klass->simd_type = 1;
 	}
 
 	klass->is_array_special_interface = gklass->is_array_special_interface;
