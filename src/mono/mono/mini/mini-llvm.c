@@ -584,12 +584,8 @@ simd_class_to_llvm_type (EmitContext *ctx, MonoClass *klass)
 		case MONO_TYPE_R8:
 			return LLVMVectorType (LLVMDoubleType (), size / 8);
 		default:
-			/* This is an unsupported element vector element type.
-			 * Pretend that the vector is valid anyway, and that it
-			 * corresponds to < size x i8 >, to avoid generating
-			 * invalid bitcode. At runtime, execution will
-			 * halt anyway with a NotSupportedException. */
-			return LLVMVectorType (LLVMInt8Type (), size);
+			g_assert_not_reached ();
+			return NULL;
 		}
 	} else {
 		printf ("%s\n", klass_name);
@@ -13585,7 +13581,10 @@ llvm_jit_finalize_method (EmitContext *ctx)
 	while (g_hash_table_iter_next (&iter, NULL, (void**)&var))
 		callee_vars [i ++] = var;
 
-	mono_llvm_optimize_method (ctx->lmethod);
+	mono_codeman_enable_write ();
+	cfg->native_code = (guint8*)mono_llvm_compile_method (ctx->module->mono_ee, cfg, ctx->lmethod, nvars, callee_vars, callee_addrs, &eh_frame);
+	mono_llvm_remove_gc_safepoint_poll (ctx->lmodule);
+	mono_codeman_disable_write ();
 	if (cfg->verbose_level > 1) {
 		g_print ("\n*** Optimized LLVM IR for %s ***\n", mono_method_full_name (cfg->method, TRUE));
 		if (cfg->compile_aot) {
@@ -13595,11 +13594,6 @@ llvm_jit_finalize_method (EmitContext *ctx)
 		}
 		g_print ("***\n\n");
 	}
-
-	mono_codeman_enable_write ();
-	cfg->native_code = (guint8*)mono_llvm_compile_method (ctx->module->mono_ee, cfg, ctx->lmethod, nvars, callee_vars, callee_addrs, &eh_frame);
-	mono_llvm_remove_gc_safepoint_poll (ctx->lmodule);
-	mono_codeman_disable_write ();
 
 	decode_llvm_eh_info (ctx, eh_frame);
 

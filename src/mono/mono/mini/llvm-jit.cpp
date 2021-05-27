@@ -306,14 +306,6 @@ struct MonoLLVMJIT {
 		return ret;
 	}
 
-	void
-	optimize (Function *func)
-	{
-		auto module = func->getParent ();
-		module->setDataLayout (data_layout);
-		fpm.run (*func);
-	}
-
 	gpointer
 	compile (
 		Function *func, int nvars, LLVMValueRef *callee_vars,
@@ -321,6 +313,7 @@ struct MonoLLVMJIT {
 	{
 		auto module = func->getParent ();
 		module->setDataLayout (data_layout);
+		fpm.run (*func);
 		// The lifetime of this module is managed by Mono, not LLVM, so
 		// the `unique_ptr` created here will be released in the
 		// NotifyCompiled callback.
@@ -423,15 +416,9 @@ public:
 		return MangledName;
 	}
 
-	void
-	optimize (Function *func)
-	{
-		F->getParent ()->setDataLayout (TM->createDataLayout ());
-		fpm.run(*F);
-	}
-
 	gpointer compile (Function *F, int nvars, LLVMValueRef *callee_vars, gpointer *callee_addrs, gpointer *eh_frame) {
 		F->getParent ()->setDataLayout (TM->createDataLayout ());
+		fpm.run(*F);
 		// TODO: run module wide optimizations, e.g. remove dead globals/functions
 		// Orc uses a shared_ptr to refer to modules so we have to save them ourselves to keep a ref
 		std::shared_ptr<Module> m (F->getParent ());
@@ -576,12 +563,6 @@ MonoEERef
 mono_llvm_create_ee (LLVMExecutionEngineRef *ee)
 {
 	return NULL;
-}
-
-void
-mono_llvm_optimize_method (LLVMValueRef method)
-{
-	jit->optimize (unwrap<Function> (method));
 }
 
 /*
