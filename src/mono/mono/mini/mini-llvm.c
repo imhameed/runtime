@@ -11388,8 +11388,21 @@ emit_method_inner (EmitContext *ctx)
 	char **names;
 	LLVMBuilderRef entry_builder = NULL;
 	LLVMBasicBlockRef entry_bb = NULL;
+	
+	if (cfg->gsharedvt) {
+		if (cfg->verbose_level > 2) {
+			printf ("XXXih: gsharedvt is true! \"%s\"", mono_method_full_name (cfg->method, FALSE));
+		}
+	} else {
+		if (cfg->verbose_level > 2) {
+			printf ("XXXih: gsharedvt is false! \"%s\"", mono_method_full_name (cfg->method, FALSE));
+		}
+	}
 
 	if (cfg->gsharedvt && !cfg->llvm_only) {
+		if (cfg->verbose_level > 2) {
+			printf ("XXXih: what the heck!?!?!?!?!?!? \"%s\"", mono_method_full_name (cfg->method, FALSE));
+		}
 		set_failure (ctx, "gsharedvt");
 		return;
 	}

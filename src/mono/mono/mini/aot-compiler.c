@@ -12326,6 +12326,12 @@ compile_methods (MonoAotCompile *acfg)
 	} else {
 		methods_len = 0;
 	}
+	
+	for (int hoo = methods_len; hoo < acfg->methods->len; ++hoo) {
+		MonoMethod *func = (MonoMethod *) g_ptr_array_index (acfg->methods, hoo);
+		char * mname = mono_method_full_name (func, FALSE);
+		printf ("XXXih: func name = \"%s\" full name = \"%s\"\n", func->name, mname);
+	}
 
 	/* Compile methods added by compile_method () or all methods if nthreads == 0 */
 	for (i = methods_len; i < acfg->methods->len; ++i) {

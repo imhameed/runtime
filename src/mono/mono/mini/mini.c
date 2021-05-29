@@ -3055,6 +3055,11 @@ mini_method_compile (MonoMethod *method, guint32 opts, JitFlags flags, int parts
  restart_compile:
 	if (method_is_gshared) {
 		method_to_compile = method;
+		char * mname = mono_method_full_name (method, FALSE);
+		if (strstr (mname, "T_REF") && strstr (mname, "WithLower")) {
+			printf ("XXXih: hober1 \"%s\"\n", mname);
+			//asm("int $3");
+		}
 	} else {
 		if (try_generic_shared) {
 			ERROR_DECL (error);
