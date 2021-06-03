@@ -7610,6 +7610,9 @@ process_bb (EmitContext *ctx, MonoBasicBlock *bb)
 			break;
 		case OP_XCAST: {
 			LLVMTypeRef t = simd_class_to_llvm_type (ctx, ins->klass);
+			printf ("XXXih: xcast: func = \"%s\"\n", mono_method_full_name (cfg->method, FALSE));
+			fflush (stdout);
+			fflush (stderr);
 
 			values [ins->dreg] = LLVMBuildBitCast (builder, lhs, t, "");
 			break;

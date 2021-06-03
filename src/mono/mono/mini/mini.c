@@ -3056,7 +3056,7 @@ mini_method_compile (MonoMethod *method, guint32 opts, JitFlags flags, int parts
 	if (method_is_gshared) {
 		method_to_compile = method;
 		char * mname = mono_method_full_name (method, FALSE);
-		if (strstr (mname, "T_REF") && strstr (mname, "WithLower")) {
+		if (strstr (mname, "T_REF") && strstr (mname, "WithUpper")) {
 			printf ("XXXih: hober1 \"%s\"\n", mname);
 			//asm("int $3");
 		}

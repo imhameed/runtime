@@ -12220,16 +12220,16 @@ collect_methods (MonoAotCompile *acfg)
 		}
 		*/
 
-		if (method->is_generic || mono_class_is_gtd (method->klass)) {
-			/* Compile the ref shared version instead */
-			method = mini_get_shared_method_full (method, SHARE_MODE_NONE, error);
-			if (!method) {
-				aot_printerrf (acfg, "Failed to load method 0x%x from '%s' due to %s.\n", token, image->name, mono_error_get_message (error));
-				aot_printerrf (acfg, "Run with MONO_LOG_LEVEL=debug for more information.\n");
-				mono_error_cleanup (error);
-				return FALSE;
-			}
-		}
+		// if (method->is_generic || mono_class_is_gtd (method->klass)) {
+		// 	/* Compile the ref shared version instead */
+		// 	method = mini_get_shared_method_full (method, SHARE_MODE_NONE, error);
+		// 	if (!method) {
+		// 		aot_printerrf (acfg, "Failed to load method 0x%x from '%s' due to %s.\n", token, image->name, mono_error_get_message (error));
+		// 		aot_printerrf (acfg, "Run with MONO_LOG_LEVEL=debug for more information.\n");
+		// 		mono_error_cleanup (error);
+		// 		return FALSE;
+		// 	}
+		// }
 
 		/* Since we add the normal methods first, their index will be equal to their zero based token index */
 		add_method_with_index (acfg, method, i, FALSE);
@@ -12259,8 +12259,8 @@ collect_methods (MonoAotCompile *acfg)
 		}
 	}
 
-	if (mono_aot_mode_is_full (&acfg->aot_opts) || mono_aot_mode_is_hybrid (&acfg->aot_opts))
-		add_generic_instances (acfg);
+	// if (mono_aot_mode_is_full (&acfg->aot_opts) || mono_aot_mode_is_hybrid (&acfg->aot_opts))
+	// 	add_generic_instances (acfg);
 
 	if (mono_aot_mode_is_full (&acfg->aot_opts))
 		add_wrappers (acfg);
