@@ -3011,7 +3011,7 @@ static
 MonoInst*
 emit_simd_intrinsics (const char *class_ns, const char *class_name, MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig, MonoInst **args)
 {
-	// FIXME: implement Vector64<T>, Vector128<T> and Vector<T> for Arm64
+	// FIXME: implement Vector<T> for Arm64
 	if (!strcmp (class_ns, "System.Runtime.Intrinsics.Arm")) {
 		return emit_hardware_intrinsics(cfg, cmethod, fsig, args,
 			supported_arm_intrinsics, sizeof (supported_arm_intrinsics),

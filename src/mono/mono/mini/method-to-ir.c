@@ -10226,6 +10226,7 @@ field_access_end:
 					if (context_used) {
 						ins = mini_emit_get_rgctx_klass (cfg, context_used,
 							tclass, MONO_RGCTX_INFO_REFLECTION_TYPE);
+						// printf ("XXXih: context_used; function \"%s\"; tclass = \"%s\"\n", mono_method_get_name (cfg->method), m_class_get_name (tclass));
 					} else if (cfg->compile_aot) {
 						if (method->wrapper_type) {
 							error_init (error); //got to do it since there are multiple conditionals below
@@ -10239,6 +10240,7 @@ field_access_end:
 								EMIT_NEW_PCONST (cfg, ins, NULL);
 							}
 						} else {
+							// printf ("XXXih: !context_used (not a wrapper); function \"%s\"; tclass = \"%s\"\n", mono_method_get_name (cfg->method), m_class_get_name (tclass));
 							EMIT_NEW_TYPE_FROM_HANDLE_CONST (cfg, ins, image, n, generic_context);
 						}
 					} else {

@@ -1804,7 +1804,65 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 				return ins;
 			}
 		}
-	} else if (cmethod->klass == mono_defaults.systemtype_class && !strcmp (cmethod->name, "op_Equality") &&
+	}
+	if (cmethod->klass == mono_defaults.systemtype_class && !strcmp (cmethod->name, "op_Equality")) {
+		// goto fail_equality_intrinsic;
+		MonoType *types [] = { NULL, NULL };
+		for (int i = 0; i < 2; ++i) {
+			if (args [i]->opcode == OP_AOTCONST) {
+				// printf ("XXXih: args [%d]->opcode == OP_AOTCONST\n", i);
+				MonoErrorInternal error;
+				error_init (&error);
+				MonoJumpInfoToken *jinfo = (MonoJumpInfoToken *) args [i]->data.op [0].p;
+				MonoClass *handle_class = NULL;
+				// printf ("XXXih: found aotconst; jinfo = %p\n", jinfo);
+				// printf ("XXXih: jinfo image = %p, jinfo->token = %d\n", jinfo->image, jinfo->token);
+				gpointer hdl = mono_ldtoken_checked (jinfo->image, jinfo->token, &handle_class, &jinfo->context, &error);
+				MonoType *type = (MonoType *) hdl;
+				types [i] = type;
+			}
+			#if 0
+			else if (MONO_IS_CALL (args [i])) {
+				// printf ("XXXih: MONO_IS_CALL (args [%d])\n", i);
+				MonoCallInst *call = (MonoCallInst *) (args [i]);
+				if (call->fptr_is_patch) {
+					// printf ("XXXih: call->fptr_is_patch\n");
+					MonoJumpInfo *ji = (MonoJumpInfo *) call->fptr;
+					if (ji->type == MONO_PATCH_INFO_RGCTX_FETCH) {
+						// printf ("XXXih: ji->type == MONO_PATCH_INFO_RGCTX_FETCH\n");
+						MonoJumpInfoRgctxEntry *entry = (MonoJumpInfoRgctxEntry *) ji->data.target;
+						MonoClass *klass = (MonoClass *) entry->data->data.target;
+						MonoType *type = m_class_get_byval_arg (klass);
+						type = mini_get_underlying_type (type);
+						types [i] = type;
+					}
+				} else {
+					// printf ("XXXih: !call->fptr_is_patch\n");
+				}
+			}
+			#endif
+		}
+#if 0
+		for (int i = 0; i < 2; ++i) {
+			MonoType *type = types [i];
+			if (type != NULL) {
+				MonoClass *klass = mono_class_from_mono_type_internal (type);
+				printf ("XXXih: klass i = %d; klass name = \"%s\"; type name = \"%s\"\n", i, m_class_get_name (klass), mono_type_get_name (type));
+			}
+		}
+#endif
+		for (int i = 0; i < 2; ++i) {
+			if (types [i] == NULL) {
+				goto fail_equality_intrinsic;
+			}
+		}
+		gboolean eq = mono_metadata_type_equal (types [0], types [1]);
+		// printf ("XXXih: emitting %d\n", eq ? 1 : 0);
+		EMIT_NEW_ICONST (cfg, ins, eq ? 1 : 0);
+		return ins;
+		fail_equality_intrinsic: ;
+	}
+	if (cmethod->klass == mono_defaults.systemtype_class && !strcmp (cmethod->name, "op_Equality") &&
 			args [0]->klass == mono_defaults.runtimetype_class && args [1]->klass == mono_defaults.runtimetype_class) {
 		EMIT_NEW_BIALU (cfg, ins, OP_COMPARE, -1, args [0]->dreg, args [1]->dreg);
 		MONO_INST_NEW (cfg, ins, OP_PCEQ);
@@ -1820,7 +1878,8 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 		ins->type = STACK_I4;
 		MONO_ADD_INS (cfg->cbb, ins);
 		return ins;
-	} else if (((!strcmp (cmethod_klass_image->assembly->aname.name, "MonoMac") ||
+	}
+	if (((!strcmp (cmethod_klass_image->assembly->aname.name, "MonoMac") ||
 	            !strcmp (cmethod_klass_image->assembly->aname.name, "monotouch")) &&
 				!strcmp (cmethod_klass_name_space, "XamCore.ObjCRuntime") &&
 				!strcmp (cmethod_klass_name, "Selector")) ||

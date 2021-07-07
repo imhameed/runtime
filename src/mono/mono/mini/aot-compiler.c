@@ -4231,6 +4231,7 @@ add_extra_method_with_depth (MonoAotCompile *acfg, MonoMethod *method, int depth
 	ERROR_DECL (error);
 
 	if (mono_method_is_generic_sharable_full (method, TRUE, TRUE, FALSE)) {
+#if 1 // XXXih
 		MonoMethod *orig = method;
 
 		method = mini_get_shared_method_full (method, SHARE_MODE_NONE, error);
@@ -4243,6 +4244,7 @@ add_extra_method_with_depth (MonoAotCompile *acfg, MonoMethod *method, int depth
 		/* Add it to profile_methods so its not skipped later */
 		if (acfg->aot_opts.profile_only && g_hash_table_lookup (acfg->profile_methods, orig))
 			g_hash_table_insert (acfg->profile_methods, method, method);
+#endif
 	} else if ((acfg->jit_opts & MONO_OPT_GSHAREDVT) && prefer_gsharedvt_method (acfg, method) && mono_method_is_generic_sharable_full (method, FALSE, FALSE, TRUE)) {
 		/* Use the gsharedvt version */
 		method = mini_get_shared_method_full (method, SHARE_MODE_GSHAREDVT, error);
@@ -5631,6 +5633,7 @@ add_generic_instances (MonoAotCompile *acfg)
 		return;
 
 	int rows = table_info_get_rows (&acfg->image->tables [MONO_TABLE_METHODSPEC]);
+#if 1 // XXXih
 	for (i = 0; i < rows; ++i) {
 		ERROR_DECL (error);
 		token = MONO_TOKEN_METHOD_SPEC | (i + 1);
@@ -5761,7 +5764,9 @@ add_generic_instances (MonoAotCompile *acfg)
 		method = (MonoMethod *)g_ptr_array_index (acfg->methods, i);
 		add_types_from_method_header (acfg, method);
 	}
+#endif
 
+#if 1 // XXXih
 	if (acfg->image == mono_defaults.corlib) {
 		MonoClass *klass;
 		MonoType *insts [256];
@@ -5881,6 +5886,7 @@ add_generic_instances (MonoAotCompile *acfg)
 			add_extra_method (acfg, m);
 		}
 	}
+#endif
 }
 
 static char *
@@ -9006,8 +9012,9 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 						  mono_method_is_generic_sharable_full (m, FALSE, FALSE, FALSE)) &&
 						(!method_has_type_vars (m) || mono_method_is_generic_sharable_full (m, TRUE, TRUE, FALSE))) {
 						if (m->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) {
-							if (mono_aot_mode_is_full (&acfg->aot_opts) && !method_has_type_vars (m))
+							if (mono_aot_mode_is_full (&acfg->aot_opts) && !method_has_type_vars (m)) {
 								add_extra_method_with_depth (acfg, mono_marshal_get_native_wrapper (m, TRUE, TRUE), depth + 1);
+							}
 						} else {
 							add_extra_method_with_depth (acfg, m, depth + 1);
 							add_types_from_method_header (acfg, m);
@@ -9018,8 +9025,9 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 				if (m->wrapper_type == MONO_WRAPPER_MANAGED_TO_MANAGED) {
 					WrapperInfo *info = mono_marshal_get_wrapper_info (m);
 
-					if (info && info->subtype == WRAPPER_SUBTYPE_ELEMENT_ADDR)
+					if (info && info->subtype == WRAPPER_SUBTYPE_ELEMENT_ADDR) {
 						add_extra_method_with_depth (acfg, m, depth + 1);
+					}
 				}
 				break;
 			}
@@ -9034,8 +9042,9 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 				MonoClass *klass = patch_info->data.field->parent;
 
 				/* The .cctor needs to run at runtime. */
-				if (mono_class_is_ginst (klass) && !mono_generic_context_is_sharable_full (&mono_class_get_generic_class (klass)->context, FALSE, FALSE) && mono_class_get_cctor (klass))
+				if (mono_class_is_ginst (klass) && !mono_generic_context_is_sharable_full (&mono_class_get_generic_class (klass)->context, FALSE, FALSE) && mono_class_get_cctor (klass)) {
 					add_extra_method_with_depth (acfg, mono_class_get_cctor (klass), depth + 1);
+				}
 				break;
 			}
 			default:
@@ -12205,7 +12214,7 @@ collect_methods (MonoAotCompile *acfg)
 			mono_error_cleanup (error);
 			return FALSE;
 		}
-			
+
 		/* Load all methods eagerly to skip the slower lazy loading code */
 		mono_class_setup_methods (method->klass);
 
@@ -12231,6 +12240,7 @@ collect_methods (MonoAotCompile *acfg)
 		}
 		*/
 
+#if 1 // XXXih
 		if (method->is_generic || mono_class_is_gtd (method->klass)) {
 			/* Compile the ref shared version instead */
 			method = mini_get_shared_method_full (method, SHARE_MODE_NONE, error);
@@ -12241,6 +12251,7 @@ collect_methods (MonoAotCompile *acfg)
 				return FALSE;
 			}
 		}
+#endif
 
 		/* Since we add the normal methods first, their index will be equal to their zero based token index */
 		add_method_with_index (acfg, method, i, FALSE);
@@ -12248,6 +12259,7 @@ collect_methods (MonoAotCompile *acfg)
 	}
 
 	/* gsharedvt methods */
+#if 1 // XXXih
 	rows = table_info_get_rows (&image->tables [MONO_TABLE_METHOD]);
 	for (mindex = 0; mindex < rows; ++mindex) {
 		ERROR_DECL (error);
@@ -12269,12 +12281,17 @@ collect_methods (MonoAotCompile *acfg)
 			add_extra_method (acfg, gshared);
 		}
 	}
+#endif
 
+#if 1 // XXXih
 	if (mono_aot_mode_is_full (&acfg->aot_opts) || mono_aot_mode_is_hybrid (&acfg->aot_opts))
 		add_generic_instances (acfg);
+#endif
 
+#if 1 // XXXih
 	if (mono_aot_mode_is_full (&acfg->aot_opts))
 		add_wrappers (acfg);
+#endif
 	return TRUE;
 }
 

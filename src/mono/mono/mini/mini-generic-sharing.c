@@ -28,8 +28,8 @@
 #include "llvmonly-runtime.h"
 #include "interp/interp.h"
 
-#define ALLOW_PARTIAL_SHARING TRUE
-//#define ALLOW_PARTIAL_SHARING FALSE
+//#define ALLOW_PARTIAL_SHARING TRUE
+#define ALLOW_PARTIAL_SHARING FALSE
  
 #if 0
 #define DEBUG(...) __VA_ARGS__
@@ -4049,6 +4049,7 @@ mini_get_shared_gparam (MonoType *t, MonoType *constraint)
 static MonoGenericInst*
 get_shared_inst (MonoGenericInst *inst, MonoGenericInst *shared_inst, MonoGenericContainer *container, gboolean use_gsharedvt);
 
+
 static MonoType*
 get_shared_type (MonoType *t, MonoType *type)
 {
@@ -4095,8 +4096,8 @@ get_shared_type (MonoType *t, MonoType *type)
 		memset (&t2, 0, sizeof (t2));
 		t2.type = ttype;
 		klass = mono_class_from_mono_type_internal (&t2);
-
-		return mini_get_shared_gparam (t, m_class_get_byval_arg (klass));
+		MonoType *ret = mini_get_shared_gparam (t, m_class_get_byval_arg (klass));
+		return ret;
 	}
 }
 
@@ -4225,14 +4226,18 @@ mini_get_shared_method_full (MonoMethod *method, GetSharedMethodFlags flags, Mon
 	if (inst)
 		shared_context.class_inst = get_shared_inst (inst, shared_context.class_inst, class_container, use_gsharedvt_inst);
 
-	if (context)
+	if (context) {
 		inst = context->method_inst;
-	else
+	}
+	else {
 		inst = shared_context.method_inst;
-	if (inst)
+	}
+	if (inst) {
 		shared_context.method_inst = get_shared_inst (inst, shared_context.method_inst, method_container, use_gsharedvt_inst);
+	}
 
-	return mono_class_inflate_generic_method_checked (declaring_method, &shared_context, error);
+	MonoMethod *ret = mono_class_inflate_generic_method_checked (declaring_method, &shared_context, error);
+	return ret;
 }
 
 int
