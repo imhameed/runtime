@@ -1898,22 +1898,32 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 	gboolean do_load_image = TRUE;
 	int align_double, align_int64;
 	guint8 *aot_data = NULL;
+	
+	// printf ("XXXih: load_aot_module\n");
 
-	if (mono_compile_aot)
+	if (mono_compile_aot) {
+		// printf ("XXXih: load_aot_module: abort 1\n");
 		return;
+	}
 
-	if (mono_aot_mode == MONO_AOT_MODE_NONE)
+	if (mono_aot_mode == MONO_AOT_MODE_NONE) {
+		// printf ("XXXih: load_aot_module: abort 2\n");
 		return;
+	}
 
-	if (assembly->image->aot_module)
+	if (assembly->image->aot_module) {
+		// printf ("XXXih: load_aot_module: abort 3\n");
 		/* 
 		 * Already loaded. This can happen because the assembly loading code might invoke
 		 * the assembly load hooks multiple times for the same assembly.
 		 */
 		return;
+	}
 
-	if (image_is_dynamic (assembly->image))
+	if (image_is_dynamic (assembly->image)) {
+		// printf ("XXXih: load_aot_module: abort 4\n");
 		return;
+	}
 
 	gboolean loaded = FALSE;
 
@@ -1932,12 +1942,14 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 
 	mono_aot_unlock ();
 
-	if (loaded)
+	if (loaded) {
+		// printf ("XXXih: load_aot_module: abort 5\n");
 		/*
 		 * Already loaded by another assembly with the same name, or the same assembly loaded
 		 * in another ALC.
 		 */
 		return;
+	}
 
 	sofile = NULL;
 
@@ -1956,9 +1968,11 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 		char *err;
 
 		aot_name = g_strdup_printf ("%s%s", assembly->image->name, MONO_SOLIB_EXT);
+		// printf ("XXXih: load_aot_module: finding dynlink aot module; aot_name = \"%s\"\n", aot_name);
 
 		sofile = mono_dl_open (aot_name, MONO_DL_LAZY, &err);
 		if (sofile) {
+			// printf ("XXXih: load_aot_module: found dynlink aot module; aot_name = \"%s\"\n", aot_name);
 			found_aot_name = g_strdup (aot_name);
 		} else {
 			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_AOT, "AOT: image '%s' not found: %s", aot_name, err);
@@ -2031,6 +2045,7 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 	if (version != MONO_AOT_FILE_VERSION) {
 		msg = g_strdup_printf ("wrong file format version (expected %d got %d)", MONO_AOT_FILE_VERSION, version);
 		usable = FALSE;
+		// printf ("XXXih: load_aot_module: dynlink aot module not usable; wrong version; found_aot_name = \"%s\"\n", found_aot_name);
 	} else {
 		guint8 *blob;
 		void *handle;
@@ -2044,9 +2059,11 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 		}
 
 		usable = check_usable (assembly, info, blob, &msg);
+		// printf ("XXXih: load_aot_module: dynlink aot module usable? %s; found_aot_name = \"%s\"\n", usable ? "yes" : "no", found_aot_name);
 	}
 
 	if (!usable) {
+		// printf ("XXXih: load_aot_module: dynlink aot module not usable; reason = \"%s\"; found_aot_name = \"%s\"\n", msg, found_aot_name);
 		if (mono_aot_only) {
 			g_error ("Failed to load AOT module '%s' while running in aot-only mode: %s.\n", found_aot_name, msg);
 		} else {
@@ -2059,6 +2076,7 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 		assembly->image->aot_module = NULL;
 		return;
 	}
+	// printf ("XXXih: load_aot_module: found dynlink aot module; proceeding; found_aot_name = \"%s\"\n", found_aot_name);
 
 	/* Sanity check */
 	align_double = MONO_ABI_ALIGNOF (double);
@@ -2238,6 +2256,7 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 		}
 #endif
 	}
+	// printf ("XXXih: load_aot_module: hober5000; aot_name = \"%s\"\n", found_aot_name);
 
 	/* Compute the boundaries of LLVM code */
 	if (info->flags & MONO_AOT_FILE_FLAG_WITH_LLVM)
@@ -2256,6 +2275,7 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 
 	g_hash_table_insert (aot_modules, assembly, amodule);
 	mono_aot_unlock ();
+	// printf ("XXXih: load_aot_module: hober9000; aot_name = \"%s\"\n", found_aot_name);
 
 	init_amodule_got (amodule, TRUE);
 
@@ -2317,6 +2337,7 @@ load_aot_module (MonoAssemblyLoadContext *alc, MonoAssembly *assembly, gpointer 
 	} else {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_AOT, "AOT: image '%s' found.", found_aot_name);
 	}
+	// printf ("XXXih: load_aot_module: hoberDONE; aot_name = \"%s\"\n", found_aot_name);
 }
 
 /*

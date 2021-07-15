@@ -4142,6 +4142,24 @@ add_method_with_index (MonoAotCompile *acfg, MonoMethod *method, int index, gboo
 	}
 }
 
+static void
+XXXih_insert_blank_function_at_index (MonoAotCompile *acfg, int index)
+{
+	g_ptr_array_add (acfg->methods, NULL);
+	acfg->nmethods = acfg->methods->len + 1;
+	while (acfg->nmethods >= acfg->cfgs_size) {
+		MonoCompile **new_cfgs;
+		int new_size;
+
+		new_size = acfg->cfgs_size ? acfg->cfgs_size * 2 : 128;
+		new_cfgs = g_new0 (MonoCompile*, new_size);
+		memcpy (new_cfgs, acfg->cfgs, sizeof (MonoCompile*) * acfg->cfgs_size);
+		g_free (acfg->cfgs);
+		acfg->cfgs = new_cfgs;
+		acfg->cfgs_size = new_size;
+	}
+}
+
 static gboolean
 prefer_gsharedvt_method (MonoAotCompile *acfg, MonoMethod *method)
 {
@@ -4265,6 +4283,7 @@ add_extra_method_with_depth (MonoAotCompile *acfg, MonoMethod *method, int depth
 static void
 add_extra_method (MonoAotCompile *acfg, MonoMethod *method)
 {
+	// printf ("XXXih: add_extra_method name = \"%s\"\n", mono_method_get_full_name (method));
 	add_extra_method_with_depth (acfg, method, 0);
 }
 
@@ -5635,6 +5654,7 @@ add_generic_instances (MonoAotCompile *acfg)
 		ERROR_DECL (error);
 		token = MONO_TOKEN_METHOD_SPEC | (i + 1);
 		method = mono_get_method_checked (acfg->image, token, NULL, NULL, error);
+		// printf ("XXXih: add_generic_instances i = %d, name = \"%s\"\n", i, mono_method_get_full_name (method));
 
 		if (!method) {
 			aot_printerrf (acfg, "Failed to load methodspec 0x%x due to %s.\n", token, mono_error_get_message (error));
@@ -12192,12 +12212,14 @@ collect_methods (MonoAotCompile *acfg)
 
 	/* Collect methods */
 	int rows = table_info_get_rows (&image->tables [MONO_TABLE_METHOD]);
+	int func_ix = 0;
 	for (i = 0; i < rows; ++i) {
 		ERROR_DECL (error);
 		MonoMethod *method;
 		guint32 token = MONO_TOKEN_METHOD_DEF | (i + 1);
 
 		method = mono_get_method_checked (acfg->image, token, NULL, NULL, error);
+		// printf ("XXXih: collect_methods: before: i = %d; name = \"%s\"\n", i, mono_method_get_full_name (method));
 
 		if (!method) {
 			aot_printerrf (acfg, "Failed to load method 0x%x from '%s' due to %s.\n", token, image->name, mono_error_get_message (error));
@@ -12233,18 +12255,64 @@ collect_methods (MonoAotCompile *acfg)
 
 		if (method->is_generic || mono_class_is_gtd (method->klass)) {
 			/* Compile the ref shared version instead */
+			// printf ("XXXih: collect_methods: is_generic before: i = %d; name = \"%s\"\n", i, mono_method_get_full_name (method));
+			gboolean should_skip = FALSE;
+			{
+				gboolean any_param_is_struct_constrained = FALSE;
+				MonoGenericContext context = { 0 };
+				MonoGenericContext *mcontext = mono_method_get_context (method);
+				if (mcontext != NULL) {
+					context = *mcontext;
+				} else {
+					MonoGenericContainer *gctr = method->is_generic
+						? mono_method_get_generic_container (method)
+						: mono_class_get_generic_container (method->klass);
+					context = gctr->context;
+				}
+				MonoGenericInst *insts[2] = { context.method_inst, context.class_inst };
+				for (int j = 0; j < 2; ++j) {
+					MonoGenericInst *inst = insts[j];
+					if (inst == NULL) continue;
+					// __asm__ volatile ("int3");
+					for (int i = 0; i < inst->type_argc; ++i) {
+						MonoType *ty = inst->type_argv [i];
+						if (ty->type == MONO_TYPE_MVAR || ty->type == MONO_TYPE_VAR) {
+							MonoGenericParam *param = ty->data.generic_param;
+							if (param->info.flags & GENERIC_PARAMETER_ATTRIBUTE_VALUE_TYPE_CONSTRAINT) {
+								// goto XXXih_inner_next;
+								any_param_is_struct_constrained = TRUE;
+							}
+						}
+						XXXih_inner_next: ;
+					}
+				}
+				should_skip = any_param_is_struct_constrained;
+			}
+			if (should_skip) {
+				printf ("XXXih: collect_methods: skipping struct-only i = %d; name = \"%s\"\n", i, mono_method_get_full_name (method));
+				// continue;
+				goto XXXih_next2;
+			}
 			method = mini_get_shared_method_full (method, SHARE_MODE_NONE, error);
+			// printf ("XXXih: collect_methods: is_generic after: i = %d; name = \"%s\"\n", i, mono_method_get_full_name (method));
 			if (!method) {
 				aot_printerrf (acfg, "Failed to load method 0x%x from '%s' due to %s.\n", token, image->name, mono_error_get_message (error));
 				aot_printerrf (acfg, "Run with MONO_LOG_LEVEL=debug for more information.\n");
 				mono_error_cleanup (error);
 				return FALSE;
 			}
+			//XXXih_insert_blank_function_at_index (acfg, func_ix); goto XXXih_next;
+			//continue;
 		}
+		// printf ("XXXih: collect_methods: after: i = %d; name = \"%s\"\n", i, mono_method_get_full_name (method));
 
 		/* Since we add the normal methods first, their index will be equal to their zero based token index */
-		add_method_with_index (acfg, method, i, FALSE);
+		XXXih_next2:
+		add_method_with_index (acfg, method, func_ix, FALSE);
+		//add_method (acfg, method);
+		XXXih_next:
 		acfg->method_index ++;
+		++func_ix;
 	}
 
 	/* gsharedvt methods */
@@ -12261,6 +12329,43 @@ collect_methods (MonoAotCompile *acfg)
 		report_loader_error (acfg, error, TRUE, "Failed to load method token 0x%x due to %s\n", i, mono_error_get_message (error));
 
 		if ((method->is_generic || mono_class_is_gtd (method->klass)) && should_emit_gsharedvt_method (acfg, method)) {
+			gboolean should_skip = FALSE;
+			{
+				gboolean any_param_is_ref_constrained = FALSE;
+				MonoGenericContext context = { 0 };
+				MonoGenericContext *mcontext = mono_method_get_context (method);
+				if (mcontext != NULL) {
+					context = *mcontext;
+				} else {
+					MonoGenericContainer *gctr = method->is_generic
+						? mono_method_get_generic_container (method)
+						: mono_class_get_generic_container (method->klass);
+					context = gctr->context;
+				}
+				MonoGenericInst *insts[2] = { context.method_inst, context.class_inst };
+				for (int j = 0; j < 2; ++j) {
+					MonoGenericInst *inst = insts[j];
+					if (inst == NULL) continue;
+					// __asm__ volatile ("int3");
+					for (int i = 0; i < inst->type_argc; ++i) {
+						MonoType *ty = inst->type_argv [i];
+						if (ty->type == MONO_TYPE_MVAR || ty->type == MONO_TYPE_VAR) {
+							MonoGenericParam *param = ty->data.generic_param;
+							if (param->info.flags & GENERIC_PARAMETER_ATTRIBUTE_REFERENCE_TYPE_CONSTRAINT) {
+								// goto XXXih_inner_next2;
+								any_param_is_ref_constrained = TRUE;
+							}
+						}
+						// any_param_is_ref_constrained = FALSE;
+						XXXih_inner_next2: ;
+					}
+				}
+				should_skip = any_param_is_ref_constrained;
+			}
+			if (should_skip) {
+				printf ("XXXih: collect_methods: skipping ref-only i = %d; name = \"%s\"\n", i, mono_method_get_full_name (method));
+				continue;
+			}
 			MonoMethod *gshared;
 
 			gshared = mini_get_shared_method_full (method, SHARE_MODE_GSHAREDVT, error);

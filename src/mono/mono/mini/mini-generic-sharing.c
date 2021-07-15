@@ -4119,7 +4119,10 @@ get_shared_inst (MonoGenericInst *inst, MonoGenericInst *shared_inst, MonoGeneri
 		if (use_gsharedvt) {
 			type_argv [i] = get_gsharedvt_type (shared_inst->type_argv [i]);
 		} else {
+			// printf ("XXXih: get_shared_inst; i = %d; shared_inst name= \"%s\", inst name = \"%s\"\n", i, mono_type_get_name (shared_inst->type_argv [i]), mono_type_get_name (inst->type_argv [i]));
 			/* These types match the ones in mini_generic_inst_is_sharable () */
+			// XXXih:
+			// __asm__ volatile ("int3");
 			type_argv [i] = get_shared_type (shared_inst->type_argv [i], inst->type_argv [i]);
 		}
 	}
@@ -4222,15 +4225,19 @@ mini_get_shared_method_full (MonoMethod *method, GetSharedMethodFlags flags, Mon
 		inst = context->class_inst;
 	else
 		inst = shared_context.class_inst;
-	if (inst)
+	if (inst) {
+		// __asm__ volatile ("int3");
 		shared_context.class_inst = get_shared_inst (inst, shared_context.class_inst, class_container, use_gsharedvt_inst);
+	}
 
 	if (context)
 		inst = context->method_inst;
 	else
 		inst = shared_context.method_inst;
-	if (inst)
+	if (inst) {
+		// __asm__ volatile ("int3");
 		shared_context.method_inst = get_shared_inst (inst, shared_context.method_inst, method_container, use_gsharedvt_inst);
+	}
 
 	return mono_class_inflate_generic_method_checked (declaring_method, &shared_context, error);
 }
